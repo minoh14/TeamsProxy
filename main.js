@@ -16,6 +16,24 @@ const server = http.createServer((req, res) => {
     return;
   }
 
+  const apikey = req.headers['x-api-key'];
+
+  if (!apikey) {
+    res.writeHead(401, { 'Content-Type': 'text/plain' });
+    res.end('Wrong request');
+    console.error('Missing X-API-Key');
+    return;
+  }
+
+  const key = apikey.trim();
+
+  if (!key.startsWith('ta_prod_') && !key.startsWith('mq_prod_')) {
+    res.writeHead(401, { 'Content-Type': 'text/plain' });
+    res.end('Wrong request');
+    console.error('Invalid X-API-Key!!!');
+    return;
+  }
+
   let parsed;
   try {
     parsed = new URL(targetUrl);
@@ -63,6 +81,24 @@ const server = http.createServer((req, res) => {
 
 // HTTPS CONNECT 터널링 처리
 server.on('connect', (req, clientSocket, head) => {
+  const apikey = req.headers['x-api-key'];
+
+  if (!apikey) {
+    clientSocket.write('HTTP/1.1 407 Authentication Required\r\n\r\n');
+    clientSocket.destroy();
+    console.error('CONNECT rejected: missing X-API-Key');
+    return;
+  }
+
+  const key = apikey.trim();
+
+  if (!key.startsWith('ta_prod_') && !key.startsWith('mq_prod_')) {
+    clientSocket.write('HTTP/1.1 407 Authentication Required\r\n\r\n');
+    clientSocket.destroy();
+    console.error('CONNECT rejected: invalid X-API-Key!!!');
+    return;
+  }
+
   const [hostname, portStr] = req.url.split(':');
   const port = parseInt(portStr, 10) || 443;
 
